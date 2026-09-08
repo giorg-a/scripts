@@ -50,7 +50,7 @@ while True:
     #
     # Valid TCP/UDP port numbers range from 1 to 65535.
     # The starting port must also be less than or equal to the ending port.
-    if start_port < 1 or end_port > 65535 or start_port > end_port:
+    if start_port < 1 or start_port > 65535 or end_port < 1 or end_port > 65535 or start_port > end_port:
         print("invalid port range")
         continue
 

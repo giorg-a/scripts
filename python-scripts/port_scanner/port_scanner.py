@@ -1,5 +1,7 @@
 import socket
 import re
+import json
+from datetime import datetime
 
 
 # Lists used to store scan results
@@ -47,7 +49,6 @@ while True:
         continue
 
     # Check that the port range is valid
-    #
     # Valid TCP/UDP port numbers range from 1 to 65535.
     # The starting port must also be less than or equal to the ending port.
     if start_port < 1 or start_port > 65535 or end_port < 1 or end_port > 65535 or start_port > end_port:
@@ -59,7 +60,6 @@ while True:
 
 
 # Scan every port from start_port through end_port
-#
 # end_port + 1 is used because Python's range() stops before its
 # second value.
 for port in range(start_port, end_port + 1):
@@ -72,7 +72,6 @@ for port in range(start_port, end_port + 1):
         sock.settimeout(0.4)
 
         # Try to connect to the target IP and port.
-        #
         # connect_ex() returns:
         #   0     if the connection succeeds
         #   other if the connection fails or times out
@@ -83,8 +82,19 @@ for port in range(start_port, end_port + 1):
 
         # A result of 0 means the port accepted the TCP connection
         if result == 0:
-            open_ports.append(port)
-            print(f"port {port}: open")
+            banner = "no banner"
+
+            # Try to read whatever the service sends back after connecting
+            try:
+                sock.seetimeout(1)  # a bit longer for, specifically for reading
+                data = sock.recv(1024)
+                if data:
+                    banner = data.decode (errors="ignore").strip()
+            except socket.timeout:
+                # No banner arrived in time, that's fine keep the default
+                pass
+            open_ports.append({"port": port, "banner": banner})
+            print(f"port {port}: open ({banner})")
 
         # Any other result means the connection was unsuccessful
         else:
@@ -92,8 +102,28 @@ for port in range(start_port, end_port + 1):
             print(f"port {port}: closed")
 
 
-# Display a summary after the scan is complete
-print(f"scanned {len(total_ports)} ports")
-print(f"open: {open_ports}")
-print(f"closed: {len(closed_ports)} ports")
 
+
+# Build a dictionary holding everything about this scan
+
+results = {
+        "target": target,
+        "scan_time": datetime.now().isoformat(),
+        "port_range": {"start": start_port, "end": end_port},
+        "total_scanned": len(total_ports),
+        "open_ports": open_ports,
+        "closed_ports": closed_ports
+}
+
+# Write it to a JSON file
+filename = f"scan_{target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+with open(filename, "w") as f:
+    json.dump(results, f, indent=4)
+
+
+
+# Display a summary after the scan is complete
+print(f"\nresults saved to {filename}")
+print(f"scanned {len(total_ports)} ports")
+print(f"open: {[p['port'] for p in open_ports]}")
+print(f"closed: {len(closed_ports)} ports")

@@ -86,7 +86,7 @@ for port in range(start_port, end_port + 1):
 
             # Try to read whatever the service sends back after connecting
             try:
-                sock.seetimeout(1)  # a bit longer for, specifically for reading
+                sock.settimeout(1)  # a bit longer for, specifically for reading
                 data = sock.recv(1024)
                 if data:
                     banner = data.decode (errors="ignore").strip()

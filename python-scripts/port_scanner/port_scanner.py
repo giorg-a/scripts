@@ -2,6 +2,8 @@ import socket
 import re
 import json
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 
 # Lists used to store scan results
@@ -87,26 +89,27 @@ def scan_port(target, port):
             return {"port": port, "status": "closed", "banner": None}
 
 
-# --- TEMPORARY TEST CODE, delete once you trust scan_port() ---
-print(scan_port(target, 80))
-print(scan_port(target, 9999))
-# ----------------------------------------------------------------
+# "Pre-fill" the target argument so each worker only needs to be
+# handed a port number. scan_with_target(80) now behaves exactly
+# like calling scan_port(target, 80).
+scan_with_target = partial(scan_port, target)
 
+# Scan every port from start_port through end_port, but now up to
+# max_workers ports are scanned AT THE SAME TIME instead of one by
+# one. executor.map() still returns results in port order, even
+# though the actual scanning happens out of order behind the scenes.
+with ThreadPoolExecutor(max_workers=100) as executor:
+    all_outcomes = executor.map(scan_with_target, range(start_port, end_port + 1))
 
-# Scan every port from start_port through end_port
-# end_port + 1 is used because Python's range() stops before its
-# second value.
-for port in range(start_port, end_port + 1):
-    outcome = scan_port(target, port)
+    for outcome in all_outcomes:
+        total_ports.append(outcome["port"])
 
-    total_ports.append(outcome["port"])
-
-    if outcome["status"] == "open":
-        open_ports.append({"port": outcome["port"], "banner": outcome["banner"]})
-        print(f"port {outcome['port']}: open ({outcome['banner']})")
-    else:
-        closed_ports.append(outcome["port"])
-        print(f"port {outcome['port']}: closed")
+        if outcome["status"] == "open":
+            open_ports.append({"port": outcome["port"], "banner": outcome["banner"]})
+            print(f"port {outcome['port']}: open ({outcome['banner']})")
+        else:
+            closed_ports.append(outcome["port"])
+            print(f"port {outcome['port']}: closed")
 
 
 # Build a dictionary holding everything about this scan

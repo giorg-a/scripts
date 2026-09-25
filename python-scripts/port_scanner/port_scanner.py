@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-
+import sys
 
 # Lists used to store scan results
 total_ports = []
@@ -43,20 +43,40 @@ while True:
 while True:
     try:
         start_port = int(input("start port: "))
-        end_port = int(input("end port: "))
+        end_port = (input("end port(leave blank for a single port): "))
+        if end_port == "":
+            end_port = start_port  
+        else:
+            end_port = int(end_port)
+
+        
+
 
     # This runs if the user enters something that is not a number
     except ValueError:
         print("enter only numbers!")
         continue
+    
+    except KeyboardInterrupt:
+        print("session interrupted")
+        sys.exit()
+
 
     # Check that the port range is valid
     # Valid TCP/UDP port numbers range from 1 to 65535.
     # The starting port must also be less than or equal to the ending port.
-    if start_port < 1 or start_port > 65535 or end_port < 1 or end_port > 65535 or start_port > end_port:
-        print("invalid port range")
+    
+    if start_port < 1 or end_port > 65535:
+        print("start port must be between 1-65535")  
+        continue 
+    
+    if end_port < start_port:
+        print("end port can not be less then a start port")
         continue
-
+  
+    if end_port > 65535:
+        print("end port can not be more then 65535") 
+        continue
     # Exit the loop after receiving a valid port range
     break
 
@@ -79,8 +99,8 @@ def scan_port(target, port):
                 data = sock.recv(1024)
                 if data:
                     banner = data.decode(errors="ignore").strip()
-            except (socket.timeout, ConnectionResetError, OSError):
                 # No banner arrived in time, or the connection was reset -
+            except (socket.timeout, ConnectionResetError, OSError):
                 # that's fine, keep the default
                 pass
 
@@ -98,26 +118,31 @@ scan_with_target = partial(scan_port, target)
 # max_workers ports are scanned AT THE SAME TIME instead of one by
 # one. executor.map() still returns results in port order, even
 # though the actual scanning happens out of order behind the scenes.
-with ThreadPoolExecutor(max_workers=100) as executor:
-    all_outcomes = executor.map(scan_with_target, range(start_port, end_port + 1))
+try:
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        all_outcomes = executor.map(scan_with_target, range(start_port, end_port + 1))
 
-    for outcome in all_outcomes:
-        total_ports.append(outcome["port"])
+        for outcome in all_outcomes:
+            total_ports.append(outcome["port"])
 
-        if outcome["status"] == "open":
-            open_ports.append({"port": outcome["port"], "banner": outcome["banner"]})
-            print(f"port {outcome['port']}: open ({outcome['banner']})")
-        else:
-            closed_ports.append(outcome["port"])
-            print(f"port {outcome['port']}: closed")
+            if outcome["status"] == "open":
+                open_ports.append({"port": outcome["port"], "banner": outcome["banner"]})
+                print(f"port {outcome['port']}: open ({outcome['banner']})")
+            else:
+                closed_ports.append(outcome["port"])
+                print(f"port {outcome['port']}: closed")
+        executor.shutdown(wait=True) 
+except KeyboardInterrupt:
+    print("session interrupted")
+    sys.exit()
 
 
 # Build a dictionary holding everything about this scan
 results = {
     "target": target,
     "scan_time": datetime.now().isoformat(),
-    "port_range": {"start": start_port, "end": end_port},
     "total_scanned": len(total_ports),
+    "port_range": {"start": start_port, "end": end_port},
     "open_ports": open_ports,
     "closed_ports": closed_ports
 }

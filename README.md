@@ -16,7 +16,7 @@ scripts/
 ## What's in here
 
 ### Python
-- [port_scanner](python-scripts/port_scanner/) — basic TCP port scanner
+- [port_scanner](python-scripts/port_scanner/) — version-4
 
 ### Bash
 - nothing yet
@@ -31,4 +31,5 @@ Learning to code with a focus on stuff that's useful for cybersecurity/CTFs, eve
 ## Note
 
 Don't run the scanning/networking scripts against anything you don't own or have permission to test. Educational use only.
+
 

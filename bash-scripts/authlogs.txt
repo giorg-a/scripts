@@ -1,0 +1,5 @@
+Sep 17 10:01 sshd[123]: Accepted password for gela from 192.168.1.10
+Sep 17 10:05 sshd[124]: Failed password for john from 192.168.1.20
+Sep 17 10:07 sshd[125]: Failed password for bob from 192.168.1.30
+Sep 17 10:10 sshd[126]: Accepted password for gela from 192.168.1.10
+Sep 17 10:12 sshd[127]: Failed password for john from 192.168.1.20

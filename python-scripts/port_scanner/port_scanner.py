@@ -12,6 +12,7 @@ import errno
 total_ports = []
 open_ports = []
 closed_ports = []
+filtered_ports = []
 
 
 def parse_target(raw):
@@ -108,9 +109,14 @@ try:
             if outcome["status"] == "open":
                 open_ports.append({"port": outcome["port"], "banner": outcome["banner"]})
                 print(f"port {outcome['port']}: open ({outcome['banner']})")
-            else:
+
+            elif outcome["status"] == "closed":
                 closed_ports.append(outcome["port"])
                 print(f"port {outcome['port']}: closed")
+
+            elif outcome["status"] == "filtered":
+                filtered_ports.append(outcome["port"])
+                print(f"port {outcome['port']}: filtered")
         executor.shutdown(wait=True) 
 except KeyboardInterrupt:
     print("session interrupted")
@@ -124,7 +130,8 @@ results = {
     "total_scanned": len(total_ports),
     "port_range": {"start": start_port, "end": end_port},
     "open_ports": open_ports,
-    "closed_ports": closed_ports
+    "closed_ports": closed_ports,
+    "filtered_ports": filtered_ports
 }
 
 # Write it to a JSON file
@@ -138,3 +145,4 @@ print(f"\nresults saved to {filename}")
 print(f"scanned {len(total_ports)} ports")
 print(f"open: {[p['port'] for p in open_ports]}")
 print(f"closed: {len(closed_ports)} ports")
+print(f"filtered: {len(filtered_ports)} ports")

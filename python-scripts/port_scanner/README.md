@@ -62,12 +62,17 @@ It's a TCP connect scanner no raw sockets, no SYN scanning, nothing fancy. It tr
 - Grabs the banner from open ports when the service sends one unprompted
 - Saves full scan results to a timestamped JSON file
 
-**v3 — this version**
+**v3**
 - Threaded scanning with `ThreadPoolExecutor`, noticeably faster on large ranges
 - Refactored the per-port scan logic into its own `scan_port()` function that returns a result instead of mutating shared state, which is what made threading possible
 - Ctrl+C now exits cleanly instead of dumping a traceback during input, and mid-scan (with a fast shutdown that doesn't wait for queued ports)
 - Single-port scanning: leave end port blank to scan just one port instead of typing it twice
 - Split the vague port-range error message into specific ones, so it actually tells you what's wrong
+
+**v4 — this version**
+- IP validation now uses Python's `ipaddress` module through a `parse_target()` function instead of a hand-written regex and octet loop. It also rejects leading zeros and non-ASCII digits, and the script is about 10 lines shorter
+- Ports are now reported as open, closed, or filtered: a refused connection (`errno.ECONNREFUSED`) means closed, and anything else (timeouts, unreachable errors) means filtered
+- Filtered ports get their own list in the terminal output, the JSON file, and the final summary
 
 ## Status
 

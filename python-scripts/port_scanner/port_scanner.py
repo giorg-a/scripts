@@ -5,6 +5,8 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 import sys
+import ipaddress 
+import errno
 
 # Lists used to store scan results
 total_ports = []
@@ -12,31 +14,17 @@ open_ports = []
 closed_ports = []
 
 
-# Ask for a target IP address until a valid-looking address is entered
+def parse_target(raw):
+    """return normalised IPv4 or raise the ValueError"""
+    return str(ipaddress.IPv4Address(raw.strip()))
+
 while True:
-    target = input("target IP: ").strip()
+    try:
+        target = parse_target(input("target IP: "))
+        break
+    except ValueError:
+        print("invalid IP!")
 
-    # Check whether the input has four groups of digits separated by dots
-    if not re.search(r"^\d+\.\d+\.\d+\.\d+$", target):
-        print("invalid IP shape!")
-        continue
-
-    # Split the IP address into its four octets
-    octets = target.split(".")
-
-    valid = True
-
-    # Check that every octet is within the valid range: 0-255
-    for octet in octets:
-        if int(octet) > 255:
-            valid = False
-
-    if not valid:
-        print("octets out of range!")
-        continue
-
-    # Exit the loop after the IP passes validation
-    break
 
 
 # Ask for the starting and ending ports
@@ -45,12 +33,10 @@ while True:
         start_port = int(input("start port: "))
         end_port = (input("end port(leave blank for a single port): "))
         if end_port == "":
-            end_port = start_port  
+             end_port = start_port  
         else:
             end_port = int(end_port)
-
         
-
 
     # This runs if the user enters something that is not a number
     except ValueError:
@@ -80,14 +66,8 @@ while True:
     # Exit the loop after receiving a valid port range
     break
 
-
 def scan_port(target, port):
-    """
-    Scans a single port on the target and returns a dict describing
-    the result. Does not print or touch any shared/global lists -
-    that bookkeeping happens after this returns, so it's safe to
-    call this from multiple threads later.
-    """
+    """(your docstring)"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.4)
         result = sock.connect_ex((target, port))
@@ -95,19 +75,19 @@ def scan_port(target, port):
         if result == 0:
             banner = "no banner"
             try:
-                sock.settimeout(1)  # a bit longer, specifically for reading
+                sock.settimeout(1)
                 data = sock.recv(1024)
                 if data:
                     banner = data.decode(errors="ignore").strip()
-                # No banner arrived in time, or the connection was reset -
             except (socket.timeout, ConnectionResetError, OSError):
-                # that's fine, keep the default
                 pass
-
             return {"port": port, "status": "open", "banner": banner}
-        else:
+
+        elif result == errno.ECONNREFUSED:
             return {"port": port, "status": "closed", "banner": None}
 
+        else:
+            return {"port": port, "status": "filtered", "banner": None}
 
 # "Pre-fill" the target argument so each worker only needs to be
 # handed a port number. scan_with_target(80) now behaves exactly

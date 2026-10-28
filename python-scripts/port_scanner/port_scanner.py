@@ -25,6 +25,10 @@ while True:
         break
     except ValueError:
         print("invalid IP!")
+    
+    except KeyboardInterrupt:
+        print("session interrupted")
+        sys.exit()
 
 
 
@@ -53,22 +57,19 @@ while True:
     # Valid TCP/UDP port numbers range from 1 to 65535.
     # The starting port must also be less than or equal to the ending port.
     
-    if start_port < 1 or end_port > 65535:
-        print("start port must be between 1-65535")  
-        continue 
-    
-    if end_port < start_port:
-        print("end port can not be less then a start port")
+    if not (1 <= start_port <= 65535):
+        print("start port must be between 1 and 65535")
         continue
-  
-    if end_port > 65535:
-        print("end port can not be more then 65535") 
+    if not (1 <= end_port <= 65535):
+        print("end port must be between 1 and 65535")
+        continue
+    if end_port < start_port:
+        print("end port can't be less than start port")
         continue
     # Exit the loop after receiving a valid port range
     break
 
 def scan_port(target, port):
-    """(your docstring)"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.4)
         result = sock.connect_ex((target, port))
@@ -112,16 +113,15 @@ try:
 
             elif outcome["status"] == "closed":
                 closed_ports.append(outcome["port"])
-                print(f"port {outcome['port']}: closed")
 
             elif outcome["status"] == "filtered":
                 filtered_ports.append(outcome["port"])
                 print(f"port {outcome['port']}: filtered")
-        executor.shutdown(wait=True) 
+        
 except KeyboardInterrupt:
-    print("session interrupted")
+    print("\nsession interrupted")
+    executor.shutdown(wait=False, cancel_futures=True)
     sys.exit()
-
 
 # Build a dictionary holding everything about this scan
 results = {
@@ -129,9 +129,9 @@ results = {
     "scan_time": datetime.now().isoformat(),
     "total_scanned": len(total_ports),
     "port_range": {"start": start_port, "end": end_port},
-    "open_ports": open_ports,
-    "closed_ports": closed_ports,
-    "filtered_ports": filtered_ports
+    "open_ports": (open_ports),
+    "closed_count": len(closed_ports),
+    "filtered_count": len(filtered_ports)
 }
 
 # Write it to a JSON file
